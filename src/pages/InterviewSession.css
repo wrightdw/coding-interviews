@@ -1,0 +1,177 @@
+.interview-session {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  color: #fff;
+}
+
+.session-header {
+  background: #2d2d2d;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #444;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.header-content h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.session-info {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.session-url {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 350px;
+}
+
+.copy-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s;
+}
+
+.copy-btn:hover {
+  background: #5568d3;
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.language-select {
+  background: #1e1e1e;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.run-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.run-btn:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.run-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.session-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 0;
+  overflow: hidden;
+}
+
+.editor-panel,
+.output-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-panel {
+  border-right: 1px solid #444;
+}
+
+.panel-header {
+  background: #252526;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #444;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.status-indicator {
+  font-size: 0.85rem;
+  color: #4caf50;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: auto;
+}
+
+.editor-container .cm-editor {
+  height: 100%;
+  font-size: 14px;
+}
+
+.output-content {
+  flex: 1;
+  background: #1e1e1e;
+  padding: 1rem;
+  margin: 0;
+  overflow: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #d4d4d4;
+}
+
+@media (max-width: 768px) {
+  .session-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 300px;
+  }
+
+  .editor-panel {
+    border-right: none;
+    border-bottom: 1px solid #444;
+  }
+
+  .session-url {
+    width: 200px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
