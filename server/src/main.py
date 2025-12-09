@@ -12,10 +12,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS middleware
+# CORS middleware - allow Codespaces and local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://*.github.dev",
+        "https://*.githubpreview.dev",
+    ],
+    allow_origin_regex=r"https://.*\.github\.dev|https://.*\.githubpreview\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

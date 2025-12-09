@@ -1,13 +1,31 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { createSession } from '../services/api';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState(null);
 
-  const createNewSession = () => {
-    const sessionId = uuidv4();
-    navigate(`/interview/${sessionId}`);
+  const createNewSession = async () => {
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      // Call backend API to create session
+      const session = await createSession({
+        language: 'javascript',
+        title: 'New Interview Session'
+      });
+      
+      console.log('Session created:', session);
+      navigate(`/interview/${session.sessionId}`);
+    } catch (err) {
+      console.error('Failed to create session:', err);
+      setError('Failed to create session. Please try again.');
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -39,8 +57,24 @@ function Home() {
           </div>
         </div>
 
-        <button className="create-session-btn" onClick={createNewSession}>
-          Create New Interview Session
+        {error && (
+          <div className="error-message" style={{ 
+            color: '#ff4444', 
+            marginBottom: '1rem', 
+            padding: '1rem', 
+            backgroundColor: 'rgba(255, 68, 68, 0.1)',
+            borderRadius: '4px'
+          }}>
+            {error}
+          </div>
+        )}
+
+        <button 
+          className="create-session-btn" 
+          onClick={createNewSession}
+          disabled={isCreating}
+        >
+          {isCreating ? 'Creating Session...' : 'Create New Interview Session'}
         </button>
       </div>
     </div>

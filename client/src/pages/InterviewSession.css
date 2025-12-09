@@ -61,6 +61,17 @@
   align-items: center;
 }
 
+.participants-badge {
+  background: #667eea;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .language-select {
   background: #1e1e1e;
   color: #fff;

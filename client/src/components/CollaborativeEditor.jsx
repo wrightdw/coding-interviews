@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -10,9 +10,6 @@ import { python } from '@codemirror/lang-python';
 import { java } from '@codemirror/lang-java';
 import { cpp } from '@codemirror/lang-cpp';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { yCollab } from 'y-codemirror.next';
-import * as Y from 'yjs';
-import { WebrtcProvider } from 'y-webrtc';
 
 const languageExtensions = {
   javascript: javascript(),
@@ -56,12 +53,11 @@ const basicSetup = [
   ])
 ];
 
-function CollaborativeEditor({ sessionId, language, onCodeChange }) {
+function CollaborativeEditor({ sessionId, language, onCodeChange, initialCode = '' }) {
   const editorRef = useRef(null);
   const viewRef = useRef(null);
-  const ydocRef = useRef(null);
-  const providerRef = useRef(null);
   const languageCompartment = useRef(new Compartment());
+  const isUpdatingFromProp = useRef(false);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -69,52 +65,36 @@ function CollaborativeEditor({ sessionId, language, onCodeChange }) {
     try {
       console.log('Initializing editor for session:', sessionId);
 
-    // Create Yjs document
-    const ydoc = new Y.Doc();
-    ydocRef.current = ydoc;
-    const ytext = ydoc.getText('codemirror');
+      // Get initial content
+      const initialContent = initialCode || languageTemplates[language] || '';
 
-    // Set up WebRTC provider for real-time collaboration
-    const provider = new WebrtcProvider(`code-interview-${sessionId}`, ydoc, {
-      signaling: ['wss://signaling.yjs.dev'],
-    });
-    providerRef.current = provider;
+      // Create editor state
+      const state = EditorState.create({
+        doc: initialContent,
+        extensions: [
+          ...basicSetup,
+          languageCompartment.current.of(languageExtensions[language] || javascript()),
+          oneDark,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged && !isUpdatingFromProp.current) {
+              onCodeChange(update.state.doc.toString());
+            }
+          })
+        ]
+      });
 
-    // Initialize with template if empty
-    if (ytext.length === 0) {
-      ytext.insert(0, languageTemplates[language] || '');
-    }
+      // Create editor view
+      const view = new EditorView({
+        state,
+        parent: editorRef.current
+      });
+      viewRef.current = view;
 
-    // Create editor state
-    const state = EditorState.create({
-      doc: ytext.toString(),
-      extensions: [
-        ...basicSetup,
-        languageCompartment.current.of(languageExtensions[language] || javascript()),
-        oneDark,
-        yCollab(ytext, provider.awareness),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            onCodeChange(update.state.doc.toString());
-          }
-        })
-      ]
-    });
+      console.log('Editor initialized successfully');
 
-    // Create editor view
-    const view = new EditorView({
-      state,
-      parent: editorRef.current
-    });
-    viewRef.current = view;
-
-    console.log('Editor initialized successfully');
-
-    return () => {
-      view.destroy();
-      provider.destroy();
-      ydoc.destroy();
-    };
+      return () => {
+        view.destroy();
+      };
     } catch (error) {
       console.error('Error initializing editor:', error);
     }
@@ -130,6 +110,29 @@ function CollaborativeEditor({ sessionId, language, onCodeChange }) {
       effects: languageCompartment.current.reconfigure(languageExtensions[language] || javascript())
     });
   }, [language]);
+
+  // Update content when initialCode prop changes (from WebSocket)
+  useEffect(() => {
+    if (!viewRef.current || !initialCode) return;
+
+    const view = viewRef.current;
+    const currentContent = view.state.doc.toString();
+
+    // Only update if content is different
+    if (currentContent !== initialCode) {
+      isUpdatingFromProp.current = true;
+      
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: currentContent.length,
+          insert: initialCode
+        }
+      });
+
+      isUpdatingFromProp.current = false;
+    }
+  }, [initialCode]);
 
   return <div ref={editorRef} className="editor-container" />;
 }
