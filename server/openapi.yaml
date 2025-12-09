@@ -1,0 +1,591 @@
+openapi: 3.0.3
+info:
+  title: Code Interview Platform API
+  description: |
+    Backend API for the collaborative coding interview platform.
+    
+    This API supports:
+    - Creating and managing interview sessions
+    - Real-time code collaboration via WebSocket
+    - Code execution in multiple programming languages
+    - Session state persistence
+    - User presence and awareness
+    
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@codeinterviewplatform.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.codeinterviewplatform.com
+    description: Production server
+
+tags:
+  - name: Sessions
+    description: Interview session management
+  - name: Code Execution
+    description: Code execution endpoints
+  - name: Collaboration
+    description: Real-time collaboration features
+
+paths:
+  /sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Create a new interview session
+      description: Creates a new interview session with a unique ID and returns session details
+      operationId: createSession
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                language:
+                  type: string
+                  enum: [javascript, python, java, cpp]
+                  default: javascript
+                  description: Default programming language for the session
+                title:
+                  type: string
+                  description: Optional title for the session
+                  example: "Senior Developer Interview"
+                expiresIn:
+                  type: integer
+                  description: Session expiration time in hours (default 24)
+                  default: 24
+                  example: 24
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}:
+    get:
+      tags:
+        - Sessions
+      summary: Get session details
+      description: Retrieve information about a specific interview session
+      operationId: getSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+            example: "92d3e5a5-2274-4cad-8884-4a06f5ade166"
+      responses:
+        '200':
+          description: Session details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    patch:
+      tags:
+        - Sessions
+      summary: Update session settings
+      description: Update language or other session settings
+      operationId: updateSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                language:
+                  type: string
+                  enum: [javascript, python, java, cpp]
+                  description: Programming language for the session
+                title:
+                  type: string
+                  description: Session title
+      responses:
+        '200':
+          description: Session updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Sessions
+      summary: Delete a session
+      description: Permanently delete an interview session
+      operationId: deleteSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Session deleted successfully
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/code:
+    get:
+      tags:
+        - Sessions
+      summary: Get current code
+      description: Retrieve the current code content for a session
+      operationId: getCode
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Code retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  code:
+                    type: string
+                    description: Current code content
+                  language:
+                    type: string
+                    enum: [javascript, python, java, cpp]
+                  lastModified:
+                    type: string
+                    format: date-time
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - Sessions
+      summary: Save code snapshot
+      description: Save a snapshot of the current code state
+      operationId: saveCode
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Code content to save
+                language:
+                  type: string
+                  enum: [javascript, python, java, cpp]
+      responses:
+        '200':
+          description: Code saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  snapshotId:
+                    type: string
+                  savedAt:
+                    type: string
+                    format: date-time
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /execute:
+    post:
+      tags:
+        - Code Execution
+      summary: Execute code
+      description: |
+        Execute code in a sandboxed environment and return the output.
+        Supports JavaScript, Python, Java, and C++.
+        
+        **Security Features:**
+        - Time limits (max 10 seconds)
+        - Memory limits (max 256MB)
+        - Network access disabled
+        - File system access restricted
+        
+      operationId: executeCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - language
+              properties:
+                code:
+                  type: string
+                  description: Code to execute
+                  example: "console.log('Hello, World!');"
+                language:
+                  type: string
+                  enum: [javascript, python, java, cpp]
+                  description: Programming language
+                  example: javascript
+                stdin:
+                  type: string
+                  description: Standard input for the program
+                  example: ""
+                timeout:
+                  type: integer
+                  description: Execution timeout in seconds (max 10)
+                  default: 5
+                  minimum: 1
+                  maximum: 10
+      responses:
+        '200':
+          description: Code executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+        '400':
+          description: Invalid request (unsupported language, missing code, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '408':
+          description: Execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Execution error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/participants:
+    get:
+      tags:
+        - Collaboration
+      summary: Get active participants
+      description: Get list of currently active participants in a session
+      operationId: getParticipants
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Participants list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  participants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Participant'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/history:
+    get:
+      tags:
+        - Sessions
+      summary: Get session history
+      description: Retrieve edit history and snapshots for a session
+      operationId: getSessionHistory
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum number of history entries to return
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Session history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HistoryEntry'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /ws/sessions/{sessionId}:
+    get:
+      tags:
+        - Collaboration
+      summary: WebSocket endpoint for real-time collaboration
+      description: |
+        WebSocket connection for real-time code synchronization and collaboration.
+        
+        **Message Types:**
+        - `code-update`: Broadcast code changes to all participants
+        - `cursor-position`: Share cursor position
+        - `user-joined`: Notify when a user joins
+        - `user-left`: Notify when a user leaves
+        - `language-changed`: Notify language selection change
+        
+        **Authentication:**
+        Send a `join` message with userId after connection.
+        
+      operationId: collaborationWebSocket
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '101':
+          description: WebSocket connection established
+        '404':
+          description: Session not found
+
+components:
+  schemas:
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Unique session identifier
+          example: "92d3e5a5-2274-4cad-8884-4a06f5ade166"
+        title:
+          type: string
+          description: Session title
+          example: "Senior Developer Interview"
+        language:
+          type: string
+          enum: [javascript, python, java, cpp]
+          description: Current programming language
+          example: javascript
+        createdAt:
+          type: string
+          format: date-time
+          description: Session creation timestamp
+          example: "2025-12-09T21:40:08Z"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Session expiration timestamp
+          example: "2025-12-10T21:40:08Z"
+        activeParticipants:
+          type: integer
+          description: Number of currently active participants
+          example: 2
+        url:
+          type: string
+          format: uri
+          description: Shareable session URL
+          example: "https://codeinterviewplatform.com/interview/92d3e5a5-2274-4cad-8884-4a06f5ade166"
+
+    ExecutionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether execution completed successfully
+          example: true
+        stdout:
+          type: string
+          description: Standard output from the program
+          example: "Hello, World!\n"
+        stderr:
+          type: string
+          description: Standard error output
+          example: ""
+        exitCode:
+          type: integer
+          description: Program exit code
+          example: 0
+        executionTime:
+          type: number
+          format: float
+          description: Execution time in milliseconds
+          example: 42.5
+        error:
+          type: string
+          description: Error message if execution failed
+          nullable: true
+
+    Participant:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Unique user identifier
+          example: "user-abc123"
+        name:
+          type: string
+          description: User display name
+          example: "Anonymous User"
+        joinedAt:
+          type: string
+          format: date-time
+          description: When the user joined the session
+        cursorPosition:
+          type: object
+          properties:
+            line:
+              type: integer
+            column:
+              type: integer
+          description: Current cursor position in the editor
+
+    HistoryEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When this change was made
+        userId:
+          type: string
+          description: User who made the change
+        changeType:
+          type: string
+          enum: [edit, language-change, snapshot]
+          description: Type of change
+        description:
+          type: string
+          description: Human-readable description of the change
+        codeSnapshot:
+          type: string
+          description: Code content at this point (for snapshots only)
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "SESSION_NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "The requested session does not exist"
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 404
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Optional JWT authentication for protected sessions
+
+# Optional security for future implementation
+# security:
+#   - bearerAuth: []
